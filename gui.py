@@ -9,21 +9,21 @@ class ChessGUI:
         print("Pygame initialized...")
         self.screen_size = 600
         self.square_size = self.screen_size // 8
-        self.screen = pygame.display.set_mode((self.screen_size, self.screen_size))
+        self.scoreboard_width = 200
+        self.screen = pygame.display.set_mode((self.screen_size + self.scoreboard_width, self.screen_size))
         print("Screen created...")
         pygame.display.set_caption("Chess AI with Backtracking")
-        self.font = pygame.font.SysFont('Arial', 32)  # Fallback font
+        self.font = pygame.font.SysFont('Arial', 24)
+        self.score_font = pygame.font.SysFont('Arial', 16)
         self.selected_square = None
         
-        # Determine base path for file loading
-        if getattr(sys, 'frozen', False):  # Running as executable
+        if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
             print(f"Running from executable, base path: {base_path}")
-        else:  # Running as script
+        else:
             base_path = os.path.dirname(__file__)
             print(f"Running from script, base path: {base_path}")
         
-        # Load piece images
         self.piece_images = {}
         piece_files = {
             'P': 'white_pawn.png', 'N': 'white_knight.png', 'B': 'white_bishop.png',
@@ -41,15 +41,14 @@ class ChessGUI:
 
     def draw_board(self, board):
         print("Drawing board...")
-        # Draw squares (temporarily remove fill to test persistence)
-        # self.screen.fill((0, 0, 0))  # Commented out to test
+        self.screen.fill((0, 0, 0), (0, 0, self.screen_size, self.screen_size))
         for square in chess.SQUARES:
             rank = chess.square_rank(square)
             file = chess.square_file(square)
             color = (238, 238, 210) if (rank + file) % 2 == 0 else (118, 150, 86)
             
             if self.selected_square == square:
-                color = (186, 202, 68)  # Highlight selected square
+                color = (186, 202, 68)
             
             pygame.draw.rect(self.screen, color, 
                            (file * self.square_size, 
@@ -58,7 +57,6 @@ class ChessGUI:
                             self.square_size))
         
         print("Drawing pieces...")
-        # Draw pieces
         for square in chess.SQUARES:
             piece = board.piece_at(square)
             if piece:
@@ -73,6 +71,24 @@ class ChessGUI:
                     text_rect = text.get_rect(center=((file + 0.5) * self.square_size, (7.5 - rank) * self.square_size))
                     self.screen.blit(text, text_rect)
 
+    def draw_scoreboard(self, white_score, black_score, turn, move_history):
+        scoreboard_rect = (self.screen_size, 0, self.scoreboard_width, self.screen_size)
+        pygame.draw.rect(self.screen, (200, 200, 200), scoreboard_rect)
+
+        white_score_text = self.score_font.render(f"White Score: {white_score}", True, (0, 0, 0))
+        self.screen.blit(white_score_text, (self.screen_size + 10, 10))
+        black_score_text = self.score_font.render(f"Black Score: {black_score}", True, (0, 0, 0))
+        self.screen.blit(black_score_text, (self.screen_size + 10, 40))
+
+        turn_text = self.score_font.render(f"Turn: {'White' if turn else 'Black'}", True, (0, 0, 0))
+        self.screen.blit(turn_text, (self.screen_size + 10, 70))
+
+        history_title = self.score_font.render("Move History:", True, (0, 0, 0))
+        self.screen.blit(history_title, (self.screen_size + 10, 100))
+        for i, move in enumerate(move_history[-10:]):
+            move_text = self.score_font.render(move, True, (0, 0, 0))
+            self.screen.blit(move_text, (self.screen_size + 10, 130 + i * 20))
+
     def get_human_move(self, board):
         print("Waiting for move input...")
         self.selected_square = None
@@ -82,6 +98,8 @@ class ChessGUI:
                     return None
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = pygame.mouse.get_pos()
+                    if x >= self.screen_size:
+                        continue
                     file = x // self.square_size
                     rank = 7 - (y // self.square_size)
                     if 0 <= file <= 7 and 0 <= rank <= 7:
@@ -90,7 +108,8 @@ class ChessGUI:
                     else:
                         print(f"Click outside board at x={x}, y={y}")
                     self.draw_board(board)
-                    self.update_display(board, 0)
+                    # Pass placeholder scores during move selection
+                    self.update_display(board, 0, 0, 0, board.turn, [])
 
         print("Waiting for second click...")
         attempt = 0
@@ -102,6 +121,8 @@ class ChessGUI:
                     return None
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = pygame.mouse.get_pos()
+                    if x >= self.screen_size:
+                        continue
                     print(f"Second click at x={x}, y={y}")
                     file = x // self.square_size
                     rank = 7 - (y // self.square_size)
@@ -126,16 +147,16 @@ class ChessGUI:
                         print(f"Second click outside board at x={x}, y={y}")
                         attempt += 1
                         continue
-            self.update_display(board, 0)
+            # Pass placeholder scores during move selection
+            self.update_display(board, 0, 0, 0, board.turn, [])
             pygame.event.pump()
             pygame.time.wait(50)
         print("Max attempts reached, canceling move...")
         self.selected_square = None
         return None
 
-    def update_display(self, board, score):
+    def update_display(self, board, score, white_score, black_score, turn, move_history):
         print("Updating display...")
         self.draw_board(board)
-        score_text = self.font.render(f"Score: {score:.1f}", True, (255, 255, 255))
-        self.screen.blit(score_text, (10, 10))
+        self.draw_scoreboard(white_score, black_score, turn, move_history)
         pygame.display.flip()
