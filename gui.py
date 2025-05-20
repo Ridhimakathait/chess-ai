@@ -16,6 +16,8 @@ class ChessGUI:
         self.font = pygame.font.SysFont('Arial', 24)
         self.score_font = pygame.font.SysFont('Arial', 16)
         self.selected_square = None
+        self.error_message = None
+        self.error_timer = 0
         
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
@@ -89,6 +91,12 @@ class ChessGUI:
             move_text = self.score_font.render(move, True, (0, 0, 0))
             self.screen.blit(move_text, (self.screen_size + 10, 130 + i * 20))
 
+        # Display error message if present
+        if self.error_message and self.error_timer > 0:
+            error_text = self.score_font.render(self.error_message, True, (255, 0, 0))
+            self.screen.blit(error_text, (self.screen_size + 10, self.screen_size - 30))
+            self.error_timer -= 1
+
     def get_human_move(self, board):
         print("Waiting for move input...")
         self.selected_square = None
@@ -108,14 +116,10 @@ class ChessGUI:
                     else:
                         print(f"Click outside board at x={x}, y={y}")
                     self.draw_board(board)
-                    # Pass placeholder scores during move selection
                     self.update_display(board, 0, 0, 0, board.turn, [])
 
         print("Waiting for second click...")
-        attempt = 0
-        max_attempts = 3
-        while attempt < max_attempts:
-            print(f"Checking for second click (attempt {attempt + 1}/{max_attempts})...")
+        while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return None
@@ -129,31 +133,52 @@ class ChessGUI:
                     if 0 <= file <= 7 and 0 <= rank <= 7:
                         target_square = chess.square(file, rank)
                         if self.selected_square == target_square:
-                            print("Same square selected, please choose a different target.")
-                            attempt += 1
-                            continue
+                            print("Same square selected, resetting selection.")
+                            self.error_message = "Same square selected"
+                            self.error_timer = 60  # Display for 60 frames (~2 seconds)
+                            self.selected_square = None
+                            return self.get_human_move(board)  # Restart move selection
                         try:
-                            move = chess.Move(self.selected_square, target_square)
+                            piece = board.piece_at(self.selected_square)
+                            promotion = None
+                            if piece and piece.piece_type == chess.PAWN:
+                                target_rank = chess.square_rank(target_square)
+                                if (piece.color == chess.WHITE and target_rank == 7) or \
+                                   (piece.color == chess.BLACK and target_rank == 0):
+                                    promotion = chess.QUEEN
+                                    print(f"Pawn promotion detected at {chess.square_name(target_square)}, promoting to queen")
+                            move = chess.Move(self.selected_square, target_square, promotion=promotion)
                             move_from = chess.square_name(self.selected_square)
                             move_to = chess.square_name(target_square)
+                            if board.is_legal(move):
+                                self.selected_square = None
+                                print(f"Move attempted: {move_from} to {move_to}")
+                                return move
+                            else:
+                                if board.piece_at(target_square):
+                                    print(f"Move {move_from} to {move_to} is illegal: Target square occupied by {board.piece_at(target_square).symbol()}")
+                                    self.error_message = f"Cannot move to {move_to}: Occupied"
+                                else:
+                                    print(f"Move {move_from} to {move_to} is illegal: Check board state for obstructions or rules")
+                                    self.error_message = f"Illegal move {move_from} to {move_to}"
+                                self.error_timer = 60
+                                self.selected_square = None
+                                return self.get_human_move(board)  # Restart move selection
+                        except ValueError as e:
+                            print(f"Invalid move: {chess.square_name(self.selected_square)} to {chess.square_name(target_square)}, error: {e}")
+                            self.error_message = "Invalid move"
+                            self.error_timer = 60
                             self.selected_square = None
-                            print(f"Move attempted: {move_from} to {move_to}")
-                            return move
-                        except ValueError:
-                            print(f"Invalid move: {chess.square_name(self.selected_square)} to {chess.square_name(target_square)}")
-                            attempt += 1
-                            continue
+                            return self.get_human_move(board)  # Restart move selection
                     else:
                         print(f"Second click outside board at x={x}, y={y}")
-                        attempt += 1
-                        continue
-            # Pass placeholder scores during move selection
+                        self.error_message = "Click outside board"
+                        self.error_timer = 60
+                        self.selected_square = None
+                        return self.get_human_move(board)  # Restart move selection
             self.update_display(board, 0, 0, 0, board.turn, [])
             pygame.event.pump()
             pygame.time.wait(50)
-        print("Max attempts reached, canceling move...")
-        self.selected_square = None
-        return None
 
     def update_display(self, board, score, white_score, black_score, turn, move_history):
         print("Updating display...")

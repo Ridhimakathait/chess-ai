@@ -37,9 +37,16 @@ class ChessGame:
                 move = self.gui.get_human_move(self.board)
                 print("Move received...")
                 if move is None:
-                    running = False
-                    print("Window closed or move canceled, exiting...")
-                    break
+                    # Check for QUIT event explicitly
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            running = False
+                            print("Window closed, exiting...")
+                            break
+                    if not running:
+                        break
+                    print("Move selection canceled, continuing to next attempt...")
+                    continue  # Continue the loop to allow another move attempt
                 try:
                     if self.board.is_legal(move):
                         captured_piece = self.board.piece_at(move.to_square)
@@ -48,8 +55,8 @@ class ChessGame:
                                 chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
                                 chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 1000
                             }.get(captured_piece.piece_type, 0)
-                            self.black_score += piece_value
-                            print(f"White captured {captured_piece.symbol()}, Black score increased by {piece_value} to {self.black_score}")
+                            self.white_score += piece_value
+                            print(f"White captured {captured_piece.symbol()}, White score increased by {piece_value} to {self.white_score}")
                         move_notation = f"{move.uci()}"
                         self.move_history.append(move_notation)
                         self.board.push(move)
@@ -69,8 +76,8 @@ class ChessGame:
                             chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
                             chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 1000
                         }.get(captured_piece.piece_type, 0)
-                        self.white_score += piece_value
-                        print(f"Black captured {captured_piece.symbol()}, White score increased by {piece_value} to {self.white_score}")
+                        self.black_score += piece_value
+                        print(f"Black captured {captured_piece.symbol()}, Black score increased by {piece_value} to {self.black_score}")
                     move_notation = f"{ai_move.uci()}"
                     self.move_history.append(move_notation)
                     self.board.push(ai_move)
