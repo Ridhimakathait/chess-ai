@@ -19,7 +19,7 @@ CHESS BOARD
 ## Installation
 
 ### For Windows Users (Recommended)
-1. Download the latest `ChessAI_Setup.exe` or `ChessAI.exe` from the [Releases]((https://github.com/Ridhimakathait/chess-ai/releases)) page.
+1. Download the latest `ChessAI_Setup.exe` or `ChessAI.exe` from the [Releases](https://github.com/Ridhimakathait/chess-ai/releases) page.
 2. If using `ChessAI_Setup.exe`:
    - Run the installer and follow the prompts.
    - Launch ChessAI from the Start Menu or `C:\Program Files\ChessAI\ChessAI.exe`.
