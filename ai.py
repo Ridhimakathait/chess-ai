@@ -25,7 +25,7 @@ class ChessAI:
                     score -= value
         return score
 
-    def minimax(self, board, depth, maximizing_player):
+    def minimax(self, board, depth, maximizing_player, alpha=-math.inf, beta=math.inf):
         if depth == 0 or board.is_game_over():
             return self._evaluate_board(), None
 
@@ -34,21 +34,27 @@ class ChessAI:
             max_eval = -math.inf
             for move in board.legal_moves:
                 board.push(move)
-                eval_score, _ = self.minimax(board, depth - 1, False)
+                eval_score, _ = self.minimax(board, depth - 1, False, alpha, beta)
                 board.pop()
                 if eval_score > max_eval:
                     max_eval = eval_score
                     best_move = move
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    break  # Prune
             return max_eval, best_move
         else:
             min_eval = math.inf
             for move in board.legal_moves:
                 board.push(move)
-                eval_score, _ = self.minimax(board, depth - 1, True)
+                eval_score, _ = self.minimax(board, depth - 1, True, alpha, beta)
                 board.pop()
                 if eval_score < min_eval:
                     min_eval = eval_score
                     best_move = move
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    break  # Prune
             return min_eval, best_move
 
     def find_best_move(self, depth=3):
